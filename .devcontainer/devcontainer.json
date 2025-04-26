@@ -1,10 +1,11 @@
 {
 	"name": "Rust Development",
-	"image": "mcr.microsoft.com/devcontainers/rust:latest",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
 	"features": {
 		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers-contrib/features/rust-cargo-binstall:1": {}
+		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 	"customizations": {
 		"vscode": {
@@ -19,13 +20,22 @@
 			"settings": {
 				"editor.formatOnSave": true,
 				"editor.rulers": [100],
+				"editor.insertSpaces": false,
+				"editor.tabSize": 4,
 				"rust-analyzer.check.command": "clippy",
 				"rust-analyzer.checkOnSave": true,
 				"rust-analyzer.cargo.loadOutDirsFromCheck": true,
-				"terminal.integrated.defaultProfile.linux": "bash"
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"[rust]": {
+					"editor.defaultFormatter": "rust-lang.rust-analyzer",
+					"editor.formatOnSave": true
+				}
 			}
 		}
 	},
-	"postCreateCommand": "cargo install cargo-watch lefthook just",
-	"remoteUser": "vscode"
+	"postCreateCommand": "lefthook install",
+	"remoteUser": "vscode",
+	"mounts": [
+		"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"
+	]
 }
