@@ -93,15 +93,35 @@ just watch
 just test
 ```
 
-### Setting up Git Hooks
+### Using Lefthook
 
-To set up the pre-commit hook for automatically linting and testing:
+This project uses [lefthook](https://github.com/evilmartians/lefthook) for git hooks. Install it with:
 
 ```bash
-# Create a symbolic link to the pre-commit hook
-ln -sf ../../.github/hooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+# Using cargo
+cargo install lefthook
+
+# Or using homebrew
+brew install lefthook
 ```
+
+Then, initialize it in your local repository:
+
+```bash
+# Initialize lefthook
+lefthook install
+
+# Run a specific hook
+lefthook run pre-commit
+
+# Run a specific command
+lefthook run lint
+```
+
+The configuration is in `lefthook.toml` and includes:
+- Pre-commit hooks for formatting, linting, and testing
+- Pre-push hooks for more comprehensive testing
+- Standalone command aliases for common tasks
 
 ### Code Style
 
