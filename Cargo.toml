@@ -13,6 +13,9 @@ walkdir = "2.3"
 anyhow = "1.0"
 colored = "2.0"
 
+[dev-dependencies]
+tempfile = "3.8"
+
 [[bin]]
 name = "ripper"
 path = "src/main.rs"
