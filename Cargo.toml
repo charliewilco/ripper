@@ -1,0 +1,18 @@
+[package]
+name = "ripper"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool to find and delete files matching a pattern"
+authors = ["Charlie Wilco"]
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+grep-regex = "0.1"
+walkdir = "2.3"
+anyhow = "1.0"
+colored = "2.0"
+
+[[bin]]
+name = "ripper"
+path = "src/main.rs"
