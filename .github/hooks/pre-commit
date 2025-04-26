@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Pre-commit hook for ripper project
+# To use, copy this file to .git/hooks/pre-commit and make it executable
+# Or run: ln -s ../../.github/hooks/pre-commit .git/hooks/pre-commit
+
+# Exit on first error
+set -e
+
+echo "Running pre-commit checks..."
+
+# Get list of staged Rust files
+files=$(git diff --cached --name-only --diff-filter=ACMR | grep "\.rs$" || true)
+
+if [ -z "$files" ]; then
+	echo "No Rust files to check. Skipping pre-commit checks."
+	exit 0
+fi
+
+# Format Rust files with rustfmt
+echo "Checking code formatting..."
+cargo fmt --all -- --check
+
+# Run clippy on staged files
+echo "Running clippy..."
+cargo clippy -- -D warnings
+
+# Run tests to make sure nothing is broken
+echo "Running tests..."
+cargo test --quiet
+
+echo "Pre-commit checks passed!"
