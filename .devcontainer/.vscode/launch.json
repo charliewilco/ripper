@@ -1,0 +1,60 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug executable 'ripper'",
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=ripper",
+					"--package=ripper"
+				],
+				"filter": {
+					"name": "ripper",
+					"kind": "bin"
+				}
+			},
+			"args": ["find", ".*\\.txt$", "-d", ".", "-v"],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug unit tests in executable 'ripper'",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run",
+					"--bin=ripper",
+					"--package=ripper"
+				],
+				"filter": {
+					"name": "ripper",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug integration tests",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run",
+					"--test=integration_test"
+				],
+				"filter": {
+					"name": "integration_test",
+					"kind": "test"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
