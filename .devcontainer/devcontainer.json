@@ -1,0 +1,31 @@
+{
+	"name": "Rust Development",
+	"image": "mcr.microsoft.com/devcontainers/rust:latest",
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers-contrib/features/rust-cargo-binstall:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"tamasfe.even-better-toml",
+				"serayuzgur.crates",
+				"vadimcn.vscode-lldb",
+				"usernamehw.errorlens",
+				"eamodio.gitlens"
+			],
+			"settings": {
+				"editor.formatOnSave": true,
+				"editor.rulers": [100],
+				"rust-analyzer.check.command": "clippy",
+				"rust-analyzer.checkOnSave": true,
+				"rust-analyzer.cargo.loadOutDirsFromCheck": true,
+				"terminal.integrated.defaultProfile.linux": "bash"
+			}
+		}
+	},
+	"postCreateCommand": "cargo install cargo-watch lefthook just",
+	"remoteUser": "vscode"
+}
