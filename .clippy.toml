@@ -1,0 +1,17 @@
+# Clippy configuration for ripper
+
+# Avoid non_ascii_literal lint for better readability
+allow-non-ascii-literals = true
+
+# Change threshold for too-many-arguments lint
+too-many-arguments-threshold = 8
+
+# Enforce upper camel case acronyms
+upper-case-acronyms-aggressive = true
+
+# Disable specific lints we don't need
+disallowed-methods = []
+disallowed-types = []
+
+# Configure cognitive complexity threshold
+cognitive-complexity-threshold = 20
