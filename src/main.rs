@@ -1,13 +1,9 @@
-use std::env;
-use std::fs;
 use std::io::{self, Write};
-use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use grep_regex::RegexMatcher;
-use walkdir::WalkDir;
+use ripper::{find_files, delete_files};
 
 /// Search for files by pattern and optionally delete them
 #[derive(Parser)]
@@ -62,34 +58,8 @@ fn find_and_delete(pattern: &str, start_dir: &str, auto_confirm: bool, verbose: 
         println!("Searching...");
     }
     
-    // Create a regex matcher for the file name
-    let matcher = RegexMatcher::new(pattern)
-        .context("Invalid regex pattern")?;
-    
     // Find matching files
-    let mut file_list = Vec::new();
-    
-    for entry in WalkDir::new(start_dir)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(|e| e.ok()) {
-        
-        let path = entry.path();
-        
-        // Skip directories
-        if path.is_dir() {
-            continue;
-        }
-        
-        // Check if file name matches the pattern
-        if let Some(file_name) = path.file_name() {
-            if let Some(file_name_str) = file_name.to_str() {
-                if matcher.is_match(file_name_str) {
-                    file_list.push(path.to_path_buf());
-                }
-            }
-        }
-    }
+    let file_list = find_files(pattern, start_dir)?;
     
     if file_list.is_empty() {
         println!("{}", "No matching files found.".yellow());
@@ -99,7 +69,7 @@ fn find_and_delete(pattern: &str, start_dir: &str, auto_confirm: bool, verbose: 
     // Display found files
     println!("{} {}", "Found".green().bold(), file_list.len().to_string().green().bold());
     for (i, file) in file_list.iter().enumerate() {
-        println!("[{}] {}", (i + 1).to_string().cyan(), file.display());
+        println!("[{}] {}", (i + 1).to_string().cyan(), file.path.display());
     }
     
     // Ask if user wants to delete the files
@@ -118,23 +88,7 @@ fn find_and_delete(pattern: &str, start_dir: &str, auto_confirm: bool, verbose: 
     if should_delete {
         println!("{}", "Deleting files...".red().bold());
         
-        let mut deleted_count = 0;
-        let mut errors = Vec::new();
-        
-        for file in &file_list {
-            match fs::remove_file(file) {
-                Ok(_) => {
-                    if verbose {
-                        println!("{} {}", "Deleted:".green(), file.display());
-                    }
-                    deleted_count += 1;
-                },
-                Err(e) => {
-                    let error_msg = format!("Failed to delete {}: {}", file.display(), e);
-                    errors.push(error_msg);
-                },
-            }
-        }
+        let (deleted_count, errors) = delete_files(&file_list);
         
         println!(
             "{} {} {} {}",
@@ -146,8 +100,8 @@ fn find_and_delete(pattern: &str, start_dir: &str, auto_confirm: bool, verbose: 
         
         if !errors.is_empty() {
             println!("{}", "Errors:".red().bold());
-            for error in errors {
-                println!("  {}", error.red());
+            for (path, error) in errors {
+                println!("  {} {}: {}", "Failed to delete".red(), path.display(), error);
             }
         }
     } else {
@@ -155,4 +109,15 @@ fn find_and_delete(pattern: &str, start_dir: &str, auto_confirm: bool, verbose: 
     }
     
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_cli_parsing() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
+    }
 }
