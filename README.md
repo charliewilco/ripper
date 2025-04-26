@@ -63,6 +63,58 @@ find /var/log -type f -name "*.log" -mtime +7 | xargs -I {} bash -c 'ripper find
 
 ## Development
 
+### Using Just Commands
+
+This project uses [just](https://github.com/casey/just) as a command runner. Install it with:
+
+```bash
+cargo install just
+```
+
+Available commands:
+
+```bash
+# List all available commands
+just
+
+# Build the project
+just build
+
+# Run the linter
+just lint
+
+# Format the code
+just format
+
+# Watch for changes and run tests
+just watch
+
+# Run all tests
+just test
+```
+
+### Setting up Git Hooks
+
+To set up the pre-commit hook for automatically linting and testing:
+
+```bash
+# Create a symbolic link to the pre-commit hook
+ln -sf ../../.github/hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+### Code Style
+
+This project uses hard tabs for indentation. The configuration is in `.rustfmt.toml`.
+
+To format the code according to the project's style guidelines:
+
+```bash
+just format
+# or
+cargo fmt --all
+```
+
 ### Testing
 
 The project includes comprehensive tests:
