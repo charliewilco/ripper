@@ -1,0 +1,53 @@
+# Lefthook configuration for ripper project
+# https://github.com/evilmartians/lefthook
+
+[pre-commit]
+parallel = true
+
+[pre-commit.commands.format]
+glob = "*.rs"
+run = "cargo fmt --all -- --check"
+
+[pre-commit.commands.lint]
+glob = "*.rs"
+run = "cargo clippy -- -D warnings"
+
+[pre-commit.commands.test]
+run = "cargo test --quiet"
+
+[pre-push]
+parallel = true
+
+[pre-push.commands.test]
+run = "cargo test"
+
+[pre-push.commands.audit]
+run = "cargo audit"
+skip = true # Enable this when you have cargo-audit installed
+
+[pre-push.commands.check-unused-deps]
+run = "cargo +nightly udeps"
+skip = true # Enable this when you have cargo-udeps installed
+
+# hooks for specific tasks
+[hook.rust-format]
+glob = "*.rs"
+run = "cargo fmt --all"
+
+[hook.rust-lint]
+glob = "*.rs"
+run = "cargo clippy -- -D warnings"
+
+[hook.rust-test]
+run = "cargo test"
+
+[hook.rust-build]
+run = "cargo build"
+
+# Common aliases for quick access
+# Use with: lefthook run <alias>
+[alias]
+format = "hook.rust-format"
+lint = "hook.rust-lint"
+test = "hook.rust-test"
+build = "hook.rust-build"
