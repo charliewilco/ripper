@@ -1,0 +1,20 @@
+# Use hard tabs instead of spaces
+hard_tabs = true
+
+# Maximum width of each line
+max_width = 100
+
+# Limit comments to 80 characters
+comment_width = 80
+
+# Format imports
+imports_granularity = "Crate"
+
+# Use small heuristics
+use_small_heuristics = "Max"
+
+# Format string literals that span multiple lines
+format_strings = true
+
+# Reorder impl items
+reorder_impl_items = true

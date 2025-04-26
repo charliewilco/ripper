@@ -1,0 +1,7 @@
+# Clippy configuration for ripper
+
+# Allow longer cognitive complexity for some functions
+cognitive-complexity-threshold = 20
+
+# Configure warning thresholds
+too-many-arguments-threshold = 10
