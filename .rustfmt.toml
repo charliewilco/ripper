@@ -7,17 +7,11 @@ max_width = 100
 # Limit comments to 80 characters
 comment_width = 80
 
-# Merge imports
-merge_imports = true
-
 # Format imports
 imports_granularity = "Crate"
 
-# Wrap complex expressions
+# Use small heuristics
 use_small_heuristics = "Max"
-
-# Format code inside macros
-format_macro_matchers = true
 
 # Format string literals that span multiple lines
 format_strings = true
