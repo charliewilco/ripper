@@ -61,6 +61,47 @@ find /var/log -type f -name "*.log" -mtime +7 | xargs -I {} bash -c 'ripper find
 - `-y, --yes` - Automatically confirm deletion without prompting
 - `-v, --verbose` - Show verbose output
 
+## Development
+
+### Testing
+
+The project includes comprehensive tests:
+
+```bash
+# Run all tests
+cargo test
+
+# Run unit tests only
+cargo test --lib
+
+# Run integration tests only 
+cargo test --test integration_test
+
+# Run CLI tests only
+cargo test --test cli_test
+```
+
+### Benchmarking
+
+The project includes performance benchmarks:
+
+```bash
+# Run all benchmarks 
+cargo bench
+
+# Run a specific benchmark
+cargo bench -- bench_find_files_small
+```
+
+### CI/CD
+
+The repository includes GitHub Actions workflows for:
+
+- Running tests on every push and pull request
+- Cross-platform testing (Linux, macOS, Windows)
+- Code formatting checks (rustfmt)
+- Linting with clippy
+
 ## License
 
 MIT
