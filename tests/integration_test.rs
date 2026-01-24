@@ -129,3 +129,30 @@ fn test_error_handling_file_deletion() {
 	assert_eq!(errors[0].0, nonexistent_path);
 	assert!(!file_path.exists());
 }
+
+#[cfg(unix)]
+#[test]
+fn test_error_handling_permission_denied() {
+	use std::fs;
+	use std::os::unix::fs::PermissionsExt;
+
+	let dir = tempdir().unwrap();
+	let file_path = dir.path().join("protected.txt");
+	File::create(&file_path).unwrap().write_all(b"test content").unwrap();
+
+	// Remove write permission from the directory to force deletion failure.
+	let mut perms = fs::metadata(dir.path()).unwrap().permissions();
+	perms.set_mode(0o555);
+	fs::set_permissions(dir.path(), perms).unwrap();
+
+	let files = vec![FoundFile::new(&file_path)];
+	let (deleted, errors) = delete_files(&files);
+
+	assert_eq!(deleted, 0);
+	assert_eq!(errors.len(), 1);
+
+	// Restore permissions so tempdir cleanup works.
+	let mut perms = fs::metadata(dir.path()).unwrap().permissions();
+	perms.set_mode(0o755);
+	fs::set_permissions(dir.path(), perms).unwrap();
+}

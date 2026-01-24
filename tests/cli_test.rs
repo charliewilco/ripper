@@ -105,3 +105,25 @@ fn test_cli_verbose_output() {
 		.stdout(predicate::str::contains("Deleting files..."))
 		.stdout(predicate::str::contains("Successfully deleted"));
 }
+
+#[test]
+fn test_cli_prompt_cancel() {
+	let dir = tempdir().unwrap();
+
+	let txt_file = dir.path().join("prompt.txt");
+	File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
+
+	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
+
+	cmd.arg("find")
+		.arg(r"\.txt$")
+		.arg("-d")
+		.arg(dir.path())
+		.write_stdin("n\n")
+		.assert()
+		.success()
+		.stdout(predicate::str::contains("Do you want to delete all these files?"))
+		.stdout(predicate::str::contains("Operation cancelled"));
+
+	assert!(txt_file.exists());
+}
