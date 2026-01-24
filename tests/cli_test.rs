@@ -8,11 +8,12 @@ use tempfile::tempdir;
 fn test_cli_find_no_args() {
 	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
 
-	cmd.arg("find")
-		.assert()
-		.failure()
-		.stderr(predicate::str::contains("required arguments were not provided"))
-		.stderr(predicate::str::contains("Usage: ripper find <PATTERN>"));
+    cmd.arg("find")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required arguments were not provided"))
+        .stderr(predicate::str::contains("Usage: ripper"))
+        .stderr(predicate::str::contains("find <PATTERN>"));
 }
 
 #[test]
