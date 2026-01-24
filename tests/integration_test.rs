@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
 
 use ripper::{find_files, delete_files, FoundFile};
 use tempfile::tempdir;
@@ -42,9 +41,9 @@ fn test_end_to_end_file_finding() {
     assert!(ds_files.iter().any(|f| f.path == ds_store));
     assert!(ds_files.iter().any(|f| f.path == subdir_ds_store));
     
-    // Test finding all files with any extension
+    // Test finding all files with any extension (matches .DS_Store too)
     let all_files_with_ext = find_files(r"\.\w+$", dir.path()).unwrap();
-    assert_eq!(all_files_with_ext.len(), 4); // txt, log, cfg, and txt in subdir
+    assert_eq!(all_files_with_ext.len(), 6); // txt, log, cfg, txt in subdir, and two .DS_Store
     
     // Test finding all hidden files
     let hidden_files = find_files(r"^\.", dir.path()).unwrap();

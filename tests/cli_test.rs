@@ -1,23 +1,23 @@
 use std::fs::File;
 use std::io::Write;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::tempdir;
 
 #[test]
 fn test_cli_find_no_args() {
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     cmd.arg("find")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("requires a value"));
+        .stderr(predicate::str::contains("required arguments were not provided"))
+        .stderr(predicate::str::contains("Usage: ripper find <PATTERN>"));
 }
 
 #[test]
 fn test_cli_invalid_command() {
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     cmd.arg("invalid")
         .assert()
@@ -26,7 +26,7 @@ fn test_cli_invalid_command() {
 
 #[test]
 fn test_cli_version() {
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     cmd.arg("--version")
         .assert()
@@ -36,14 +36,14 @@ fn test_cli_version() {
 
 #[test]
 fn test_cli_help() {
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     cmd.arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("USAGE"))
-        .stdout(predicate::str::contains("OPTIONS"))
-        .stdout(predicate::str::contains("SUBCOMMANDS"));
+        .stdout(predicate::str::contains("Usage:"))
+        .stdout(predicate::str::contains("Commands:"))
+        .stdout(predicate::str::contains("Options:"));
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn test_cli_find_with_pattern() {
     let txt_file = dir.path().join("test.txt");
     File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
     
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     // Run with the -y flag to bypass confirmation
     cmd.arg("find")
@@ -75,7 +75,7 @@ fn test_cli_find_with_pattern() {
 fn test_cli_find_no_matches() {
     let dir = tempdir().unwrap();
     
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     cmd.arg("find")
        .arg(r"nonexistent\.txt$")
@@ -94,7 +94,7 @@ fn test_cli_verbose_output() {
     let txt_file = dir.path().join("verbose.txt");
     File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
     
-    let mut cmd = Command::cargo_bin("ripper").unwrap();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
     
     cmd.arg("find")
        .arg(r"\.txt$")
@@ -106,5 +106,6 @@ fn test_cli_verbose_output() {
        .success()
        .stdout(predicate::str::contains("Searching for:"))
        .stdout(predicate::str::contains("Starting from:"))
-       .stdout(predicate::str::contains("Deleted:"));
+       .stdout(predicate::str::contains("Deleting files..."))
+       .stdout(predicate::str::contains("Successfully deleted"));
 }
