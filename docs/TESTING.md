@@ -39,8 +39,10 @@ cargo test --test integration_test
 CLI tests in `tests/cli_test.rs` test the command-line interface using the `assert_cmd` crate, which allows testing the full application as a black box:
 
 - Command-line argument parsing
-- Error handling for incorrect arguments
-- Various flag combinations (verbose, auto-confirm, etc.)
+- Read-only `find` behavior
+- Destructive `delete` behavior, including prompt and `--yes`
+- Error handling for incorrect arguments and invalid regex patterns
+- Various flag combinations (`--verbose`, `--follow-links`, `--yes`)
 - Exit codes and output validation
 
 Run with:
@@ -50,7 +52,7 @@ cargo test --test cli_test
 
 ### 4. Performance Benchmarks
 
-Benchmarks in `benches/benchmark.rs` measure the performance of key operations:
+Benchmarks in `benches/benchmark.rs` use Criterion to measure the performance of key operations:
 
 - Finding files with simple patterns
 - Finding files with complex patterns
@@ -88,6 +90,7 @@ Our GitHub Actions workflow (`.github/workflows/build.yml`) automates testing:
 - Tests are run on multiple platforms (Linux, macOS, Windows)
 - Code formatting is checked with `rustfmt`
 - Code quality is enforced with `clippy`
+- Benchmarks are compiled on stable with `cargo bench --no-run`
 
 ## Test-Driven Development
 
@@ -102,8 +105,10 @@ We follow TDD principles for development:
 
 Before major releases, perform these manual tests:
 
-- [ ] Find and delete `.DS_Store` files in a test directory
+- [ ] Preview `.DS_Store` files in a test directory with `ripper find`
+- [ ] Delete `.DS_Store` files in a test directory with `ripper delete`
 - [ ] Verify verbose output contains all expected information
+- [ ] Verify symlinked directories are ignored unless `--follow-links` is provided
 - [ ] Test with very large directories (1000+ files)
 - [ ] Test with complex regex patterns
 - [ ] Verify behavior when no matching files are found

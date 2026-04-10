@@ -17,7 +17,12 @@ colored = "2.0"
 tempfile = "3.8"
 assert_cmd = "2.0"
 predicates = "3.0"
+criterion = "0.5"
 
 [[bin]]
 name = "ripper"
 path = "src/main.rs"
+
+[[bench]]
+name = "benchmark"
+harness = false

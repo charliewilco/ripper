@@ -43,10 +43,21 @@ jobs:
       - name: Run tests
         run: cargo test
 
+  bench:
+    name: Bench Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile benchmarks
+        run: cargo bench --no-run
+
   build-release:
     name: Build Release (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    needs: [lint, test]
+    needs: [lint, test, bench]
     strategy:
       fail-fast: false
       matrix:

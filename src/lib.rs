@@ -1,9 +1,16 @@
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+#[cfg(not(unix))]
 use regex::Regex;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
+
+#[cfg(unix)]
+use regex::bytes::Regex as BytesRegex;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
 
 /// Represents a file found by the search
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,31 +35,90 @@ impl FoundFile {
 	}
 }
 
+/// Search options that control filesystem traversal behavior.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SearchOptions {
+	pub follow_links: bool,
+}
+
+#[cfg(unix)]
+#[derive(Debug)]
+struct FilenameMatcher {
+	regex: BytesRegex,
+}
+
+#[cfg(not(unix))]
+#[derive(Debug)]
+struct FilenameMatcher {
+	regex: Regex,
+}
+
+impl FilenameMatcher {
+	#[cfg(unix)]
+	fn new(pattern: &str) -> Result<Self> {
+		let regex = BytesRegex::new(pattern).context("Invalid regex pattern")?;
+		Ok(Self { regex })
+	}
+
+	#[cfg(not(unix))]
+	fn new(pattern: &str) -> Result<Self> {
+		let regex = Regex::new(pattern).context("Invalid regex pattern")?;
+		Ok(Self { regex })
+	}
+
+	#[cfg(unix)]
+	fn is_match(&self, file_name: &OsStr) -> bool {
+		self.regex.is_match(file_name.as_bytes())
+	}
+
+	#[cfg(not(unix))]
+	fn is_match(&self, file_name: &OsStr) -> bool {
+		file_name.to_str().is_some_and(|file_name| self.regex.is_match(file_name))
+	}
+}
+
 /// Find files matching a pattern in a directory
 pub fn find_files<P: AsRef<Path>>(pattern: &str, start_dir: P) -> Result<Vec<FoundFile>> {
-	let regex = Regex::new(pattern).context("Invalid regex pattern")?;
+	find_files_with_options(pattern, start_dir, SearchOptions::default())
+}
 
+/// Find files matching a pattern using explicit search options.
+pub fn find_files_with_options<P: AsRef<Path>>(
+	pattern: &str,
+	start_dir: P,
+	options: SearchOptions,
+) -> Result<Vec<FoundFile>> {
+	let matcher = FilenameMatcher::new(pattern)?;
+	let start_dir = start_dir.as_ref();
 	let mut file_list = Vec::new();
 
-	for entry in WalkDir::new(start_dir).follow_links(true).into_iter().filter_map(|e| e.ok()) {
-		let path = entry.path();
-
-		// Skip directories
-		if path.is_dir() {
+	for entry in WalkDir::new(start_dir).follow_links(options.follow_links) {
+		let entry = walk_entry(entry, start_dir)?;
+		if entry.file_type().is_dir() {
 			continue;
 		}
 
-		// Check if file name matches the pattern
-		if let Some(file_name) = path.file_name() {
-			if let Some(file_name_str) = file_name.to_str() {
-				if regex.is_match(file_name_str) {
-					file_list.push(FoundFile::new(path));
-				}
-			}
+		if matcher.is_match(entry.file_name()) {
+			file_list.push(FoundFile::new(entry.into_path()));
 		}
 	}
 
 	Ok(file_list)
+}
+
+fn walk_error_message(start_dir: &Path, error: &walkdir::Result<DirEntry>) -> String {
+	match error {
+		Ok(_) => format!("Failed to walk {}", start_dir.display()),
+		Err(error) => match error.path() {
+			Some(path) => format!("Failed to walk {}", path.display()),
+			None => format!("Failed to walk {}", start_dir.display()),
+		},
+	}
+}
+
+fn walk_entry(entry: walkdir::Result<DirEntry>, start_dir: &Path) -> Result<DirEntry> {
+	let error_message = walk_error_message(start_dir, &entry);
+	entry.with_context(|| error_message)
 }
 
 /// Batch delete files
@@ -146,6 +212,12 @@ mod tests {
 		assert!(results.iter().any(|f| f.path == file1));
 		assert!(results.iter().any(|f| f.path == file2));
 		assert!(!results.iter().any(|f| f.path == file3));
+	}
+
+	#[test]
+	fn test_find_files_with_options_defaults_to_not_following_links() {
+		let options = SearchOptions::default();
+		assert!(!options.follow_links);
 	}
 
 	#[test]
