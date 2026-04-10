@@ -1,14 +1,13 @@
 use std::fs::File;
 use std::io::Write;
 
-use ripper::{delete_files, find_files, FoundFile};
+use ripper::{delete_files, find_files, find_files_with_options, FoundFile, SearchOptions};
 use tempfile::tempdir;
 
 #[test]
 fn test_end_to_end_file_finding() {
 	let dir = tempdir().unwrap();
 
-	// Create multiple test files with different extensions
 	let txt_file = dir.path().join("document.txt");
 	let log_file = dir.path().join("server.log");
 	let cfg_file = dir.path().join("config.cfg");
@@ -19,7 +18,6 @@ fn test_end_to_end_file_finding() {
 	File::create(&cfg_file).unwrap().write_all(b"config content").unwrap();
 	File::create(&ds_store).unwrap().write_all(b"DS_Store content").unwrap();
 
-	// Create a subdirectory with more files
 	let subdir = dir.path().join("subdir");
 	std::fs::create_dir(&subdir).unwrap();
 
@@ -29,60 +27,48 @@ fn test_end_to_end_file_finding() {
 	File::create(&subdir_txt).unwrap().write_all(b"nested content").unwrap();
 	File::create(&subdir_ds_store).unwrap().write_all(b"nested DS_Store").unwrap();
 
-	// Test finding only txt files
 	let txt_files = find_files(r"\.txt$", dir.path()).unwrap();
 	assert_eq!(txt_files.len(), 2);
-	assert!(txt_files.iter().any(|f| f.path == txt_file));
-	assert!(txt_files.iter().any(|f| f.path == subdir_txt));
+	assert!(txt_files.iter().any(|file| file.path == txt_file));
+	assert!(txt_files.iter().any(|file| file.path == subdir_txt));
 
-	// Test finding .DS_Store files
 	let ds_files = find_files(r"\.DS_Store$", dir.path()).unwrap();
 	assert_eq!(ds_files.len(), 2);
-	assert!(ds_files.iter().any(|f| f.path == ds_store));
-	assert!(ds_files.iter().any(|f| f.path == subdir_ds_store));
+	assert!(ds_files.iter().any(|file| file.path == ds_store));
+	assert!(ds_files.iter().any(|file| file.path == subdir_ds_store));
 
-	// Test finding all files with any extension (matches .DS_Store too)
 	let all_files_with_ext = find_files(r"\.\w+$", dir.path()).unwrap();
-	assert_eq!(all_files_with_ext.len(), 6); // txt, log, cfg, txt in subdir, and two .DS_Store
+	assert_eq!(all_files_with_ext.len(), 6);
 
-	// Test finding all hidden files
 	let hidden_files = find_files(r"^\.", dir.path()).unwrap();
-	assert_eq!(hidden_files.len(), 2); // Both .DS_Store files
+	assert_eq!(hidden_files.len(), 2);
 }
 
 #[test]
 fn test_end_to_end_delete_operation() {
 	let dir = tempdir().unwrap();
-
-	// Create a few .DS_Store files
 	let paths = [
 		dir.path().join(".DS_Store"),
 		dir.path().join("subdir1").join(".DS_Store"),
 		dir.path().join("subdir2").join(".DS_Store"),
 	];
 
-	// Create necessary directories
 	std::fs::create_dir_all(dir.path().join("subdir1")).unwrap();
 	std::fs::create_dir_all(dir.path().join("subdir2")).unwrap();
 
-	// Create the files
 	for path in &paths {
 		File::create(path).unwrap().write_all(b"DS_Store content").unwrap();
 		assert!(path.exists());
 	}
 
-	// Create some other files that shouldn't be deleted
 	let other_file = dir.path().join("important.txt");
 	File::create(&other_file).unwrap().write_all(b"important content").unwrap();
 
-	// Find the .DS_Store files
 	let ds_files = find_files(r"\.DS_Store$", dir.path()).unwrap();
 	assert_eq!(ds_files.len(), 3);
 
-	// Delete them
 	let (deleted_count, errors) = delete_files(&ds_files);
 
-	// Verify all were deleted
 	assert_eq!(deleted_count, 3);
 	assert_eq!(errors.len(), 0);
 
@@ -90,18 +76,15 @@ fn test_end_to_end_delete_operation() {
 		assert!(!path.exists());
 	}
 
-	// Make sure the other file wasn't deleted
 	assert!(other_file.exists());
 
-	// Verify that a new search finds no .DS_Store files
 	let remaining_ds_files = find_files(r"\.DS_Store$", dir.path()).unwrap();
 	assert_eq!(remaining_ds_files.len(), 0);
 }
 
 #[test]
 fn test_error_handling_invalid_regex() {
-	// Test that invalid regex patterns return appropriate errors
-	let result = find_files(r"[", "."); // Invalid regex pattern
+	let result = find_files(r"[", ".");
 	assert!(result.is_err());
 
 	let error_message = result.unwrap_err().to_string();
@@ -110,24 +93,113 @@ fn test_error_handling_invalid_regex() {
 
 #[test]
 fn test_error_handling_file_deletion() {
-	// Create a file
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("test.txt");
 	File::create(&file_path).unwrap().write_all(b"test content").unwrap();
 
-	// Create a non-existent file
 	let nonexistent_path = dir.path().join("nonexistent.txt");
-
-	// Try to delete both
 	let files = vec![FoundFile::new(&file_path), FoundFile::new(&nonexistent_path)];
 
 	let (deleted, errors) = delete_files(&files);
 
-	// One should succeed, one should fail
 	assert_eq!(deleted, 1);
 	assert_eq!(errors.len(), 1);
 	assert_eq!(errors[0].0, nonexistent_path);
 	assert!(!file_path.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn test_find_files_does_not_follow_symlinked_directories_by_default() {
+	use std::os::unix::fs::symlink;
+
+	let dir = tempdir().unwrap();
+	let external_dir = tempdir().unwrap();
+	let external_file = external_dir.path().join("external.txt");
+	File::create(&external_file).unwrap().write_all(b"external").unwrap();
+
+	let linked_dir = dir.path().join("linked");
+	symlink(external_dir.path(), &linked_dir).unwrap();
+
+	let results = find_files(r"\.txt$", dir.path()).unwrap();
+
+	assert!(!results.iter().any(|file| file.path == external_file));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_find_files_can_follow_symlinked_directories_when_enabled() {
+	use std::os::unix::fs::symlink;
+
+	let dir = tempdir().unwrap();
+	let external_dir = tempdir().unwrap();
+	let external_file = external_dir.path().join("external.txt");
+	File::create(&external_file).unwrap().write_all(b"external").unwrap();
+
+	let linked_dir = dir.path().join("linked");
+	symlink(external_dir.path(), &linked_dir).unwrap();
+	let linked_file = linked_dir.join("external.txt");
+
+	let results =
+		find_files_with_options(r"\.txt$", dir.path(), SearchOptions { follow_links: true })
+			.unwrap();
+
+	assert!(results.iter().any(|file| file.path == linked_file));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_find_files_returns_error_for_unreadable_directory() {
+	use std::fs;
+	use std::os::unix::fs::PermissionsExt;
+
+	let dir = tempdir().unwrap();
+	let restricted_dir = dir.path().join("restricted");
+	std::fs::create_dir(&restricted_dir).unwrap();
+
+	let mut perms = fs::metadata(&restricted_dir).unwrap().permissions();
+	perms.set_mode(0o000);
+	fs::set_permissions(&restricted_dir, perms).unwrap();
+
+	let result = find_files(r"\.txt$", dir.path());
+
+	let mut perms = fs::metadata(&restricted_dir).unwrap().permissions();
+	perms.set_mode(0o755);
+	fs::set_permissions(&restricted_dir, perms).unwrap();
+
+	assert!(result.is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn test_following_broken_symlink_returns_error() {
+	use std::os::unix::fs::symlink;
+
+	let dir = tempdir().unwrap();
+	let missing_target = dir.path().join("missing");
+	let broken_link = dir.path().join("broken");
+	symlink(&missing_target, &broken_link).unwrap();
+
+	let result = find_files_with_options(r".*", dir.path(), SearchOptions { follow_links: true });
+
+	assert!(result.is_err());
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn test_find_files_matches_non_utf8_filenames() {
+	use std::ffi::OsString;
+	use std::os::unix::ffi::OsStringExt;
+
+	let dir = tempdir().unwrap();
+	let file_name = OsString::from_vec(vec![b'f', b'o', 0x80, b'.', b't', b'x', b't']);
+	let file_path = dir.path().join(&file_name);
+
+	File::create(&file_path).unwrap().write_all(b"test content").unwrap();
+
+	let results = find_files(r"\.txt$", dir.path()).unwrap();
+
+	assert!(results.iter().any(|file| file.path == file_path));
 }
 
 #[cfg(unix)]
@@ -140,7 +212,6 @@ fn test_error_handling_permission_denied() {
 	let file_path = dir.path().join("protected.txt");
 	File::create(&file_path).unwrap().write_all(b"test content").unwrap();
 
-	// Remove write permission from the directory to force deletion failure.
 	let mut perms = fs::metadata(dir.path()).unwrap().permissions();
 	perms.set_mode(0o555);
 	fs::set_permissions(dir.path(), perms).unwrap();
@@ -151,7 +222,6 @@ fn test_error_handling_permission_denied() {
 	assert_eq!(deleted, 0);
 	assert_eq!(errors.len(), 1);
 
-	// Restore permissions so tempdir cleanup works.
 	let mut perms = fs::metadata(dir.path()).unwrap().permissions();
 	perms.set_mode(0o755);
 	fs::set_permissions(dir.path(), perms).unwrap();

@@ -1,6 +1,6 @@
 # Ripper
 
-A command-line tool to find and delete files matching a pattern, powered by ripgrep's regex engine.
+A command-line tool to find and delete files matching a pattern, powered by Rust's `regex` crate.
 
 ## Installation
 
@@ -25,23 +25,32 @@ ripper find "\.DS_Store"
 # Find all .DS_Store files in your home directory
 ripper find "\.DS_Store" -d ~
 
-# Find and automatically delete all .DS_Store files in your home directory
-ripper find "\.DS_Store" -d ~ -y
+# Delete all .DS_Store files in your home directory without prompting
+ripper delete "\.DS_Store" -d ~ -y
 
 # Find with verbose output
 ripper find "\.DS_Store" -d ~ -v
+
+# Follow symlinked directories explicitly while searching
+ripper find "\.DS_Store" -d ~ --follow-links
 ```
 
 ## Examples
 
-**Finding and deleting `.DS_Store` files:**
+**Preview `.DS_Store` files before deleting them:**
 
 ```bash
 # From your home directory
 ripper find "\.DS_Store" -d ~
 ```
 
-**Finding and deleting temporary files:**
+**Delete `.DS_Store` files after previewing them:**
+
+```bash
+ripper delete "\.DS_Store" -d ~
+```
+
+**Find temporary files without deleting them:**
 
 ```bash
 # Find all .tmp files
@@ -52,14 +61,25 @@ ripper find "\.tmp$" -d /path/to/project
 
 ```bash
 # Use with other tools like find
-find /var/log -type f -name "*.log" -mtime +7 | xargs -I {} bash -c 'ripper find "$(basename {})" -d "$(dirname {})" -y'
+find /var/log -type f -name "*.log" -mtime +7 | xargs -I {} bash -c 'ripper delete "$(basename {})" -d "$(dirname {})" -y'
 ```
+
+## Commands
+
+- `ripper find <PATTERN>` - Search for matching filenames and print the matches without deleting anything
+- `ripper delete <PATTERN>` - Search for matching filenames and delete them after prompting, or immediately with `--yes`
 
 ## Options
 
+Shared options for `find` and `delete`:
+
 - `-d, --dir <DIR>` - Directory to search in (defaults to current directory)
+- `-v, --verbose` - Show detailed traversal settings and search context
+- `--follow-links` - Follow symlinked directories while walking the tree
+
+Deletion-only options:
+
 - `-y, --yes` - Automatically confirm deletion without prompting
-- `-v, --verbose` - Show verbose output
 
 ## Development
 
@@ -155,14 +175,14 @@ cargo test --test cli_test
 
 ### Benchmarking
 
-The project includes performance benchmarks:
+The project includes performance benchmarks using Criterion:
 
 ```bash
 # Run all benchmarks 
 cargo bench
 
 # Run a specific benchmark
-cargo bench -- bench_find_files_small
+cargo bench find_files_small
 ```
 
 ### CI/CD
@@ -173,6 +193,7 @@ The repository includes GitHub Actions workflows for:
 - Cross-platform testing (Linux, macOS, Windows)
 - Code formatting checks (rustfmt)
 - Linting with clippy
+- Stable benchmark compilation checks
 
 ## License
 

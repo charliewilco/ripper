@@ -39,38 +39,54 @@ fn test_cli_help() {
 		.success()
 		.stdout(predicate::str::contains("Usage:"))
 		.stdout(predicate::str::contains("Commands:"))
-		.stdout(predicate::str::contains("Options:"));
+		.stdout(predicate::str::contains("find"))
+		.stdout(predicate::str::contains("delete"));
 }
 
 #[test]
-fn test_cli_find_with_pattern() {
+fn test_cli_find_lists_matches_without_deleting() {
 	let dir = tempdir().unwrap();
-
-	// Create some test files
 	let txt_file = dir.path().join("test.txt");
 	File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
 
 	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
 
-	// Run with the -y flag to bypass confirmation
 	cmd.arg("find")
 		.arg(r"\.txt$")
 		.arg("-d")
 		.arg(dir.path())
-		.arg("-y") // Auto-confirm
+		.assert()
+		.success()
+		.stdout(predicate::str::contains("test.txt"))
+		.stdout(predicate::str::contains("Successfully deleted").not());
+
+	assert!(txt_file.exists());
+}
+
+#[test]
+fn test_cli_delete_with_pattern() {
+	let dir = tempdir().unwrap();
+	let txt_file = dir.path().join("test.txt");
+	File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
+
+	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
+
+	cmd.arg("delete")
+		.arg(r"\.txt$")
+		.arg("-d")
+		.arg(dir.path())
+		.arg("-y")
 		.assert()
 		.success()
 		.stdout(predicate::str::contains("test.txt"))
 		.stdout(predicate::str::contains("Successfully deleted"));
 
-	// Verify the file was deleted
 	assert!(!txt_file.exists());
 }
 
 #[test]
 fn test_cli_find_no_matches() {
 	let dir = tempdir().unwrap();
-
 	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
 
 	cmd.arg("find")
@@ -83,39 +99,37 @@ fn test_cli_find_no_matches() {
 }
 
 #[test]
-fn test_cli_verbose_output() {
+fn test_cli_delete_verbose_output() {
 	let dir = tempdir().unwrap();
-
-	// Create a test file
 	let txt_file = dir.path().join("verbose.txt");
 	File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
 
 	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
 
-	cmd.arg("find")
+	cmd.arg("delete")
 		.arg(r"\.txt$")
 		.arg("-d")
 		.arg(dir.path())
-		.arg("-v") // Verbose mode
-		.arg("-y") // Auto-confirm
+		.arg("-v")
+		.arg("-y")
 		.assert()
 		.success()
 		.stdout(predicate::str::contains("Searching for:"))
 		.stdout(predicate::str::contains("Starting from:"))
+		.stdout(predicate::str::contains("Following links: no"))
 		.stdout(predicate::str::contains("Deleting files..."))
 		.stdout(predicate::str::contains("Successfully deleted"));
 }
 
 #[test]
-fn test_cli_prompt_cancel() {
+fn test_cli_delete_prompt_cancel() {
 	let dir = tempdir().unwrap();
-
 	let txt_file = dir.path().join("prompt.txt");
 	File::create(&txt_file).unwrap().write_all(b"test content").unwrap();
 
 	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
 
-	cmd.arg("find")
+	cmd.arg("delete")
 		.arg(r"\.txt$")
 		.arg("-d")
 		.arg(dir.path())
@@ -126,4 +140,67 @@ fn test_cli_prompt_cancel() {
 		.stdout(predicate::str::contains("Operation cancelled"));
 
 	assert!(txt_file.exists());
+}
+
+#[test]
+fn test_cli_find_invalid_regex() {
+	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
+
+	cmd.arg("find")
+		.arg("[")
+		.assert()
+		.failure()
+		.stderr(predicate::str::contains("Invalid regex pattern"));
+}
+
+#[test]
+fn test_cli_delete_invalid_regex() {
+	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
+
+	cmd.arg("delete")
+		.arg("[")
+		.arg("-y")
+		.assert()
+		.failure()
+		.stderr(predicate::str::contains("Invalid regex pattern"));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_cli_delete_exits_non_zero_on_partial_failure() {
+	use std::fs;
+	use std::os::unix::fs::PermissionsExt;
+
+	let dir = tempdir().unwrap();
+	let deletable_file = dir.path().join("deletable.txt");
+	let protected_dir = dir.path().join("protected");
+	let protected_file = protected_dir.join("protected.txt");
+
+	File::create(&deletable_file).unwrap().write_all(b"deletable").unwrap();
+	fs::create_dir(&protected_dir).unwrap();
+	File::create(&protected_file).unwrap().write_all(b"protected").unwrap();
+
+	let mut perms = fs::metadata(&protected_dir).unwrap().permissions();
+	perms.set_mode(0o555);
+	fs::set_permissions(&protected_dir, perms).unwrap();
+
+	let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("ripper");
+
+	cmd.arg("delete")
+		.arg(r"\.txt$")
+		.arg("-d")
+		.arg(dir.path())
+		.arg("-y")
+		.assert()
+		.failure()
+		.stdout(predicate::str::contains("Successfully deleted"))
+		.stdout(predicate::str::contains("Errors:"))
+		.stderr(predicate::str::contains("Failed to delete 1 out of 2 matching files"));
+
+	let mut perms = fs::metadata(&protected_dir).unwrap().permissions();
+	perms.set_mode(0o755);
+	fs::set_permissions(&protected_dir, perms).unwrap();
+
+	assert!(!deletable_file.exists());
+	assert!(protected_file.exists());
 }
