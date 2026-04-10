@@ -176,4 +176,4 @@ The repository includes GitHub Actions workflows for:
 
 ## License
 
-MIT
+Unlicense
